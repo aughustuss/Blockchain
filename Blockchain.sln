@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Client", "..\Client\Client.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Server", "..\Server\Server.csproj", "{CB6D4780-328B-45CF-B17F-31B21D770FB3}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ClientLayer", "ClientLayer", "{60E5EFDE-B538-46DF-9A5B-E2F1496A3C0A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ServerLayer", "ServerLayer", "{F66A04A0-75F4-41A8-B8CF-75EC2B9C687D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,6 +28,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{CC79AFDA-3C47-4217-BA71-D80DC98F9640} = {60E5EFDE-B538-46DF-9A5B-E2F1496A3C0A}
+		{CB6D4780-328B-45CF-B17F-31B21D770FB3} = {F66A04A0-75F4-41A8-B8CF-75EC2B9C687D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {8A74C909-5D21-47E9-A0B9-E83A4A5C333F}
