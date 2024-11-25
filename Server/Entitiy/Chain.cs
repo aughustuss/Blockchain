@@ -26,20 +26,28 @@ namespace Blockchain.Entitiy
 
         public async Task<string> AddBlock(string data)
         {
-            Block previousBlock = _chain[^1];
-            Block newBlock = new(previousBlock.Index + 1, DateTime.Now, data, previousBlock.Hash);
 
-            await newBlock.MineBlockAsync(_difficulty);
+            int corruptedBlockIndex = SearchForCorruptedBlock();
 
-            _chain.Add(newBlock);
-            return newBlock.Hash;
+            if (corruptedBlockIndex == 0)
+            {
+                Block previousBlock = _chain[^1];
+                Block newBlock = new(previousBlock.Index + 1, DateTime.Now, data, previousBlock.Hash);
+
+                await newBlock.MineBlockAsync(_difficulty);
+
+                _chain.Add(newBlock);
+                return newBlock.Hash;
+            }
+
+            return string.Empty;
         }
 
         public void StartPeriodicValidation()
         {
             _timer = new Timer(async =>
             {
-                VerifyIfChainIsValid();
+                SearchForCorruptedBlock();
             }, null, TimeSpan.Zero, TimeSpan.FromSeconds(15));
         }
 
@@ -61,21 +69,6 @@ namespace Blockchain.Entitiy
                 }
             }
             return 0;
-        }
-
-        public int VerifyIfChainIsValid() => SearchForCorruptedBlock();
-
-        public void DisplayChain()
-        {
-            foreach (var block in _chain)
-            {
-                if (_chain.IndexOf(block) == 0)
-                    Console.WriteLine("Bloco genesis");
-
-                Console.WriteLine($"Index: {block.Index}");
-                Console.WriteLine($"Hash: {block.Hash}");
-                Console.WriteLine();
-            }
         }
 
         public void FixChain(int corruptedBlockIndex)

@@ -6,8 +6,6 @@ namespace Blockchain.Interface
     public interface IChain
     {
         public int SearchForCorruptedBlock();
-        public int VerifyIfChainIsValid();
-        public void DisplayChain();
         public void FixChain(int corruptedBlockIndex);
 
         Block GetBlockByHash(string hash);

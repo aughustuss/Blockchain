@@ -48,13 +48,10 @@ namespace Server
         {
             if (_blockChain == null)
                 throw new Exception("Blockchain não foi iniciada corretamente");
-
-
             NetworkStream stream = client.GetStream();
-
             try
             {
-                int corruptedBlockIndex = _blockChain.VerifyIfChainIsValid();
+                int corruptedBlockIndex = _blockChain.SearchForCorruptedBlock();
 
                 byte[] buffer = new byte[1024];
 
@@ -66,39 +63,25 @@ namespace Server
 
                 string[] parts = request.Split("|", 3);
 
-                string clientId = parts[0], command = parts[1], response = string.Empty, data = parts[2], hash = parts[2];
+                if (parts.Length < 2)
+                    throw new Exception("Formato de solicitação inválido");
 
-                if (!_authorizedClients.Contains(clientId))
-                    throw new Exception("Cliente não possui acesso à rede");
+                string command = parts[0], data = parts[1], response = string.Empty;
 
                 if (corruptedBlockIndex != 0 && command != "FIX_BLOCKCHAIN")
                     throw new Exception("Blockchain foi corrompida");
 
-                if (parts.Length < 2)
-                    throw new Exception("Formato de solicitação inválido");
-
-                switch (command)
+                if (command == "AUTHENTICATION")
                 {
-                    case "CREATE_BLOCK":
-                        await ConfirmOptionAndPerformRequestAsync("O bloco será adicionado...", () => CreateBlockAsync(data, _blockChain, stream), stream);
-                        break;
-                    case "FIND_BLOCK":
-                        await ConfirmOptionAndPerformRequestAsync("O bloco será retornado...", () => FindBlockAsync(hash, _blockChain, stream), stream);
-                        break;
-                    case "EDIT_BLOCK":
-                        string newData = parts[2].Split("|")[1];
-                        await ConfirmOptionAndPerformRequestAsync("Alteração de dados solicitada...", () => EditBlockAsync(hash.Split("|")[0], _blockChain, newData, stream), stream);
-                        break;
-                    case "SHOW_BLOCKCHAIN":
-                        await ConfirmOptionAndPerformRequestAsync("A Blockchain será exibida...", () => ShowBlockchainAsync(_blockChain, stream), stream);
-                        break;
-                    case "FIX_BLOCKCHAIN":
-                        await ConfirmOptionAndPerformRequestAsync("O bloco será reparado...", () => FixBlockchainAsync(_blockChain, corruptedBlockIndex, stream), stream);
-                        break;
-                    default:
-                        await SendResponseAsync(stream, "Comando inválido");
-                        break;
+                    if (_authorizedClients.Contains(data))
+                        await SendResponseAsync(stream, "AUTHORIZED");
+                    else
+                    {
+                        await SendResponseAsync(stream, "UNAUTHORIZED");
+                        return;
+                    }
                 }
+                ...
             }
             catch (IOException ex)
             {
@@ -123,8 +106,6 @@ namespace Server
 
         private static async Task CreateBlockAsync(string data, Chain blockchain, NetworkStream stream)
         {
-            blockchain.VerifyIfChainIsValid();
-
             string blockHash = await blockchain.AddBlock(data);
 
             await SendResponseAsync(stream, $"Bloco adicionado. Hash: {blockHash}");
@@ -158,7 +139,7 @@ namespace Server
             if (block == null) return;
 
             block.Data = newData;
-            block.Hash = block.CalculateHash();
+            await block.MineBlockAsync(_difficulty);
 
             await SendResponseAsync(stream, $"Bloco com o ID {block.Index} foi editado");
         }

@@ -10,30 +10,37 @@ namespace Client
 
         private static async Task Main(string[] args)
         {
-            Console.WriteLine("Conectado ao servidor");
+
+            if (!await AuthenticateAsync())
+            {
+                Console.WriteLine("Autenticação falhou. Encerrando o cliente...");
+                return;
+            }
+
+            Console.WriteLine("Autenticação bem-sucedida. Conectado ao servidor.");
 
             while (true)
             {
-                Console.WriteLine("\nEscolha uma opção:");
-                Console.WriteLine("1 - Criar um novo bloco com dados");
-                Console.WriteLine("2 - Encontrar um bloco pelo hash");
-                Console.WriteLine("3 - Mostrar blockchain");
-                Console.WriteLine("4 - Editar bloco existente (simular um bloqueio pela Blockchain)");
-                Console.WriteLine("5 - Consertar blockchain");
-                Console.WriteLine("6 - Interromper conexão");
+                Console.WriteLine("\nEscolha uma opção:\n\n" +
+                    "1 - Criar um novo bloco com dados\n" +
+                    "2 - Encontrar um bloco pelo hash\n" +
+                    "3 - Mostrar blockchain\n" +
+                    "4 - Editar bloco existente (simular um bloqueio pela Blockchain\n" +
+                    "5 - Consertar blockchain\n" +
+                    "6 - Interromper conexão\n");
                 Console.Write("\nOpção: ");
 
                 string? input = Console.ReadLine();
 
                 if (!int.TryParse(input, out int option) || option < 1 || option > 6)
                 {
-                    Console.WriteLine("\nOpção inválida. Tente novamente.");
+                    Console.WriteLine("\nOpção inválida. Tente novamente");
                     continue;
                 }
 
                 if (String.IsNullOrEmpty(input))
                 {
-                    Console.WriteLine("\nDigite algo.");
+                    Console.WriteLine("\nEscolha uma opção");
                     continue;
                 }
 
@@ -59,6 +66,30 @@ namespace Client
                         return;
                 }
             }
+        }
+
+        private static async Task<bool> AuthenticateAsync()
+        {
+            string authenticationMessage = "AUTHENTICATION";
+            string request = $"{authenticationMessage}|{_clientId}";
+
+            try
+            {
+                using TcpClient client = new("127.0.0.1", 9999);
+
+                await SendRequestAsync(client, request);
+
+                var responses = await ReceiveResponseAsync(client.GetStream());
+
+                if (responses.Any(r => r.Contains("UNAUTHORIZED")))
+                    return false; 
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro na autenticação: {ex.Message}");
+            }
+
+            return true;
         }
 
         private static async Task CreateBlockAsync()
@@ -106,19 +137,18 @@ namespace Client
         {
             NetworkStream stream = client.GetStream();
 
-            string requestWithId = $"{_clientId}|{request}";
-
-            byte[] dataBytes = Encoding.UTF8.GetBytes(requestWithId);
+            byte[] dataBytes = Encoding.UTF8.GetBytes(request);
 
             await stream.WriteAsync(dataBytes);
 
             await stream.FlushAsync();
         }
 
-        private static async Task ReceiveResponseAsync(NetworkStream stream)
+        private static async Task<List<string>> ReceiveResponseAsync(NetworkStream stream)
         {
             byte[] buffer = new byte[1024];
             StringBuilder responseBuilder = new();
+            List<string> responses = [];
 
             while (true)
             {
@@ -136,19 +166,22 @@ namespace Client
                             .Replace("END_OF_MESSAGE", "")
                             .Trim();
 
+                        int endIndex = responseBuilder.ToString().IndexOf("END_OF_MESSAGE");
+
                         completeResponse = completeResponse.StartsWith('+') ? $"\n{completeResponse}" : completeResponse;
 
-                        if (!string.IsNullOrEmpty(completeResponse))
-                            Console.WriteLine($"\nResposta do servidor: {completeResponse}");
+                        responses.Add(completeResponse);
 
-                        responseBuilder.Clear();
+                        responseBuilder.Remove(0, endIndex + "END_OF_MESSAGE".Length);
+
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Console.WriteLine($"Houve um erro com o retorno do servidor: {ex.Message}");
                 }
-
             }
+            return responses;
         }
 
         private static async Task CreateAndSendRequestAsync(string option, string data)
@@ -159,7 +192,15 @@ namespace Client
 
             await SendRequestAsync(client, request);
 
-            await ReceiveResponseAsync(client.GetStream());
+            var responses = await ReceiveResponseAsync(client.GetStream());
+
+            ShowResponse(responses);
+        }
+
+        private static void ShowResponse(List<string> responses)
+        {
+            foreach (var response in responses)
+                Console.WriteLine($"\nResposta do servidor: {response}");
         }
     }
 }
